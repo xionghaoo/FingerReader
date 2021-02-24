@@ -107,8 +107,8 @@ public abstract class ImageClassifier {
   }
 
   /** Classifies a frame from the preview stream. */
-  void classifyFrame(Bitmap bitmap, SpannableStringBuilder builder) {
-    printTopKLabels(builder);
+  void classifyFrame(Bitmap bitmap, SpannableStringBuilder builder, MostMatchCallback callback) {
+    printTopKLabels(builder, callback);
 
     if (tflite == null) {
       Log.e(TAG, "Image classifier has not been initialized; Skipped.");
@@ -211,7 +211,7 @@ public abstract class ImageClassifier {
   }
 
   /** Prints top-K labels, to be shown in UI as the results. */
-  private void printTopKLabels(SpannableStringBuilder builder) {
+  private void printTopKLabels(SpannableStringBuilder builder, MostMatchCallback callback) {
     for (int i = 0; i < getNumLabels(); ++i) {
       sortedLabels.add(
           new AbstractMap.SimpleEntry<>(labelList.get(i), getNormalizedProbability(i)));
@@ -219,7 +219,6 @@ public abstract class ImageClassifier {
         sortedLabels.poll();
       }
     }
-
     final int size = sortedLabels.size();
     for (int i = 0; i < size; i++) {
       Map.Entry<String, Float> label = sortedLabels.poll();
@@ -236,6 +235,8 @@ public abstract class ImageClassifier {
       if (i == size - 1) {
         float sizeScale = (i == size - 1) ? 1.75f : 0.8f;
         span.setSpan(new RelativeSizeSpan(sizeScale), 0, span.length(), 0);
+
+        callback.match(label.getKey(), label.getValue());
       }
       span.setSpan(new ForegroundColorSpan(color), 0, span.length(), 0);
       builder.insert(0, span);
@@ -325,5 +326,9 @@ public abstract class ImageClassifier {
    */
   protected int getNumLabels() {
     return labelList.size();
+  }
+
+  interface MostMatchCallback {
+    public void match(String label, double possibility);
   }
 }

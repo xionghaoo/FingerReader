@@ -31,10 +31,6 @@ import android.media.ThumbnailUtils
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicYuvToRGB
 import android.text.SpannableStringBuilder
 import android.util.DisplayMetrics
 import android.util.Log
@@ -44,6 +40,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.ImageButton
+import android.widget.TextView
 import androidx.camera.core.*
 import androidx.camera.core.ImageCapture.Metadata
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -59,7 +56,9 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
@@ -91,6 +90,7 @@ class CameraFragment : Fragment() {
     private lateinit var broadcastManager: LocalBroadcastManager
 
     private var classifier: ImageClassifier? = null
+    private var isStartQuery = false
 
     private var displayId: Int = -1
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
@@ -324,12 +324,45 @@ class CameraFragment : Fragment() {
                         // 子线程执行
                         if (classifier != null && activity != null) {
                             val textToShow = SpannableStringBuilder()
-                            val origionalBitmal: Bitmap = proxy.toBitmap()
-                            val bitmap = ThumbnailUtils.extractThumbnail(origionalBitmal, 224, 224)
-                            classifier?.classifyFrame(bitmap, textToShow)
-                            bitmap.recycle()
+                            // TODO 图像转换存在BUG
+                            val originalBitmap: Bitmap = proxy.toBitmap()
+                            val bitmap = ThumbnailUtils.extractThumbnail(originalBitmap, 224, 224)
 
-                            Log.d(TAG, "手势识别: ${textToShow}")
+                            val stream = ByteArrayOutputStream()
+                            originalBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+
+                            classifier?.classifyFrame(bitmap, textToShow) { label, possibility ->
+                                if (possibility > 0.3) {
+                                    if (!isStartQuery) {
+                                        isStartQuery = true
+
+                                        context?.apply {
+                                            val file = File(externalCacheDir, "test.png")
+                                            val o = FileOutputStream(file)
+                                            originalBitmap.compress(Bitmap.CompressFormat.PNG, 100, o)
+                                        }
+
+                                        val bytes = stream.toByteArray()
+                                        Log.d(TAG, "原图字节码：${bytes.size}")
+                                        WebFingerOcr.test(bytes, object : WebFingerOcr.ResultCallback {
+                                            override fun success(data: WebFingerOcr.ResponseData?) {
+                                                isStartQuery = false
+                                                activity?.runOnUiThread {
+                                                    view?.findViewById<TextView>(R.id.tv_result)?.text = data?.data?.toString()
+                                                }
+                                                Log.d(TAG, "result: ${data?.data}")
+                                            }
+
+                                            override fun failure() {
+                                                Log.d(TAG, "orc failure")
+                                                isStartQuery = false
+                                            }
+                                        })
+                                    }
+                                }
+                                Log.d(TAG, "手势识别: label: $label, value: $possibility")
+                            }
+                            bitmap.recycle()
                             proxy.close()
                         }
                     })

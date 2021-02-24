@@ -57,4 +57,5 @@ dependencies {
     implementation dpes.easy_permission
     implementation dpes.glide.main
     implementation dpes.glide.compiler
+    implementation dpes.okhttp
 }

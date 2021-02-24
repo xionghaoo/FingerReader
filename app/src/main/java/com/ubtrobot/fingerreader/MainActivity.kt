@@ -2,18 +2,14 @@ package com.ubtrobot.fingerreader
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.hardware.display.DisplayManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.TextureView
-import androidx.camera.core.Preview
-import androidx.camera.view.PreviewView
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
 import pub.devrel.easypermissions.AfterPermissionGranted
 import pub.devrel.easypermissions.EasyPermissions
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.io.InputStream
 
 const val KEY_EVENT_ACTION = "key_event_action"
 const val KEY_EVENT_EXTRA = "key_event_extra"
@@ -40,6 +36,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        findViewById<Button>(R.id.btn_finger_api).setOnClickListener {
+            fingerApiTest()
+        }
+
         cameraTask()
     }
 
@@ -47,7 +47,11 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this)
     }
@@ -60,15 +64,38 @@ class MainActivity : AppCompatActivity() {
                 .commit()
         } else {
             EasyPermissions.requestPermissions(
-                    this,
-                    "App需要相机权限，请授予",
-                    RC_CAMERA_PERMISSION,
-                    Manifest.permission.CAMERA
+                this,
+                "App需要相机权限，请授予",
+                RC_CAMERA_PERMISSION,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.CAMERA
             )
         }
     }
 
     private fun hasCameraPermission() : Boolean {
-        return EasyPermissions.hasPermissions(this, Manifest.permission.CAMERA)
+        return EasyPermissions.hasPermissions(this, Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    }
+
+    private fun fingerApiTest() {
+        Thread {
+            val inputStream: InputStream = assets.open("1.jpg")
+
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            val output = ByteArrayOutputStream()
+            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                output.write(buffer, 0, bytesRead)
+            }
+            WebFingerOcr.test(output.toByteArray(), object : WebFingerOcr.ResultCallback {
+                override fun success(data: WebFingerOcr.ResponseData?) {
+
+                }
+
+                override fun failure() {
+
+                }
+            })
+        }.start()
     }
 }

@@ -1,5 +1,7 @@
 package com.ubtrobot.fingerreader;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -72,7 +74,7 @@ public class HttpUtil {
 				return resultMap;
 			}
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
+			Log.d("HttpUtil", e.getMessage());
 			return null;
 		}
 	}
