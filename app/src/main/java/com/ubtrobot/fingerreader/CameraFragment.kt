@@ -321,13 +321,10 @@ class CameraFragment : Fragment() {
 //                    })
 
                     it.setAnalyzer(cameraExecutor, { proxy ->
-//                        proxy.planes[0].buffer
-                        Log.d(TAG, "图片分析: ${proxy.width}, ${proxy.height}")
+                        // 子线程执行
                         if (classifier != null && activity != null) {
                             val textToShow = SpannableStringBuilder()
                             val origionalBitmal: Bitmap = proxy.toBitmap()
-                            Log.d(TAG, "origionalBitmal: ${origionalBitmal.width}, ${origionalBitmal.height}")
-
                             val bitmap = ThumbnailUtils.extractThumbnail(origionalBitmal, 224, 224)
                             classifier?.classifyFrame(bitmap, textToShow)
                             bitmap.recycle()
